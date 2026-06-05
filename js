@@ -59,8 +59,8 @@ button.addEventListener('click', function() {
 // -------------------------
 (() => {
   const tabs = document.querySelectorAll(".res-tab");
-  const panels = document.querySelectorAll(".res-panel");
-  if (!tabs.length || !panels.length) return;
+  const cards = document.querySelectorAll(".res-card");
+  if (!tabs.length || !cards.length) return;
 
   const activate = (cat) => {
     tabs.forEach((t) => {
@@ -69,9 +69,17 @@ button.addEventListener('click', function() {
       t.setAttribute("aria-selected", isActive ? "true" : "false");
     });
 
-    panels.forEach((p) => {
-      const panelName = p.dataset.panel;
-      p.hidden = cat === "all" ? panelName !== "all" : panelName !== cat;
+    cards.forEach((card) => {
+      if (cat === "all") {
+        card.style.display = "";
+      } else {
+        const cats = card.dataset.cats ? card.dataset.cats.split(" ") : [];
+        if (cats.includes(cat)) {
+          card.style.display = "";
+        } else {
+          card.style.display = "none";
+        }
+      }
     });
   };
 
@@ -79,4 +87,78 @@ button.addEventListener('click', function() {
 
   const allTab = document.querySelector('.res-tab[data-cat="all"]');
   activate(allTab?.dataset.cat || tabs[0].dataset.cat || "all");
+})();
+
+
+// -------------------------
+// Upcoming Highlights (SheetDB integration)
+// -------------------------
+// -------------------------
+// Upcoming Highlights
+// Spreadsheet columns:
+// Month | Day | Time | Location | Event Name | Event Desc
+// -------------------------
+(async () => {
+  const container = document.getElementById("upcoming-highlights");
+  if (!container) return;
+
+  try {
+    const response = await fetch("https://sheetdb.io/api/v1/jm26rrrk95jpl");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch event highlights");
+    }
+
+    const data = await response.json();
+
+    let events = data.map(row => ({
+      month: (row["Month"] || "").trim(),
+      day: (row["Day"] || "").trim(),
+      time: (row["Time"] || "").trim(),
+      location: (row["Location"] || "").trim(),
+      name: (row["Event Name"] || "").trim(),
+      desc: (row["Event Desc"] || "").trim()
+    }));
+
+    events = events.filter(evt => evt.name);
+
+    if (events.length === 0) {
+      container.innerHTML =
+        '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6);">No upcoming events.</div>';
+      return;
+    }
+
+    container.innerHTML = events.map(evt => `
+      <div class="up-item">
+        <div class="up-date">
+          <div class="up-month">${evt.month || "EVENT"}</div>
+          <div class="up-day">${evt.day || ""}</div>
+        </div>
+
+        <div class="up-info">
+          <div class="up-top">
+            <h3 class="up-title">${evt.name}</h3>
+            <span class="chip">EVENT</span>
+          </div>
+
+          <p class="up-desc">${evt.desc}</p>
+
+          <div class="up-meta">
+            <span>🕒 ${evt.time || "TBA"}</span>
+            <span>📍 ${evt.location || "TBA"}</span>
+          </div>
+        </div>
+
+        <div class="up-right">
+          <a class="up-cta" href="calendar.html">Details →</a>
+        </div>
+      </div>
+    `).join("");
+
+  } catch (err) {
+    console.error(err);
+
+    container.innerHTML =
+      '<div style="text-align:center;padding:30px;color:rgba(255,255,255,0.6);">Failed to load upcoming events.</div>';
+  }
 })();
